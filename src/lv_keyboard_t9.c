@@ -28,7 +28,7 @@ static const char *const t9_btn_chars_lower[T9_BUTTON_COUNT] = {
 static const char *const t9_btn_chars_upper[T9_BUTTON_COUNT] = {
     NULL, "ABC2", "DEF3", "GHI4", "JKL5", "MNO6", "PQRS7", "TUV8", "WXYZ9", NULL};
 static const char *const t9_btn_chars_numbers[T9_BUTTON_COUNT] = {
-    NULL, "2", "3", "4", "5", "6", "7", "8", "9", NULL};
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
 
 typedef enum
 {
@@ -377,9 +377,18 @@ static void t9_btn_event_cb(lv_event_t *e)
                     if (idx >= 0)
                     {
                         char buf[16];
-                        const char *chars = (t9_mode == T9_MODE_NUMBERS) ? t9_btn_chars_numbers[idx] : (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[idx]
-                                                                                                                                  : t9_btn_chars_lower[idx];
-                        lv_snprintf(buf, sizeof(buf), "%s\n%s", t9_btn_labels[r][c], chars);
+                        const char *chars;
+                        if (idx == 0) {
+                            chars = t9_btn_symbols_1;
+                            lv_snprintf(buf, sizeof(buf), "1\n%c%c%c", chars[0], chars[1], chars[2]);
+                        } else if (idx == 9) {
+                            chars = t9_btn_symbols_0;
+                            lv_snprintf(buf, sizeof(buf), "0\n%c%c%c", chars[0], chars[1], chars[2]);
+                        } else {
+                            chars = (t9_mode == T9_MODE_NUMBERS) ? t9_btn_chars_numbers[idx] : (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[idx]
+                                                                                                   : t9_btn_chars_lower[idx];
+                            lv_snprintf(buf, sizeof(buf), "%s\n%s", t9_btn_labels[r][c], chars);
+                        }
                         t9_update_btn_label(t9_btns[r][c], buf);
                     }
                 }
@@ -395,9 +404,18 @@ static void t9_btn_event_cb(lv_event_t *e)
                     if (idx >= 0)
                     {
                         char buf[16];
-                        const char *chars = (t9_mode == T9_MODE_NUMBERS) ? t9_btn_chars_numbers[idx] : (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[idx]
-                                                                                                                                  : t9_btn_chars_lower[idx];
-                        lv_snprintf(buf, sizeof(buf), "%s\n%s", t9_btn_labels[r][c], chars);
+                        const char *chars;
+                        if (idx == 0) {
+                            chars = t9_btn_symbols_1;
+                            lv_snprintf(buf, sizeof(buf), "1\n%c%c%c", chars[0], chars[1], chars[2]);
+                        } else if (idx == 9) {
+                            chars = t9_btn_symbols_0;
+                            lv_snprintf(buf, sizeof(buf), "0\n%c%c%c", chars[0], chars[1], chars[2]);
+                        } else {
+                            chars = (t9_mode == T9_MODE_NUMBERS) ? t9_btn_chars_numbers[idx] : (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[idx]
+                                                                                                   : t9_btn_chars_lower[idx];
+                            lv_snprintf(buf, sizeof(buf), "%s\n%s", t9_btn_labels[r][c], chars);
+                        }
                         t9_update_btn_label(t9_btns[r][c], buf);
                     }
                 }
