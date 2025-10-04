@@ -31,11 +31,11 @@ list(APPEND MAIN_LIBS lv_keyboard_t9)
 #include "lv_keyboard_t9.h"
 ```
 
-4. Create and link the keyboard to a textarea:
+4. Create a parent object (e.g., a container or screen), then create and link the keyboard to a textarea:
 
 ```c
-lv_obj_t *keyboard = lv_obj_create(parent);
-lv_keyboard_t9_init(keyboard, ta);
+lv_obj_t *parent = lv_obj_create(lv_scr_act()); // or any container
+lv_obj_t *keyboard = lv_keyboard_t9_init(parent, ta);
 ```
 
 ### Event Callback Example
@@ -56,8 +56,8 @@ static void my_keyboard_event_cb(lv_obj_t *keyboard, lv_keyboard_t9_event_t even
 }
 
 // ...
-lv_obj_t *keyboard = lv_obj_create(parent);
-lv_keyboard_t9_init(keyboard, ta);
+lv_obj_t *parent = lv_obj_create(lv_scr_act()); // or any container
+lv_obj_t *keyboard = lv_keyboard_t9_init(parent, ta);
 lv_keyboard_t9_set_event_cb(keyboard, my_keyboard_event_cb);
 ```
 
