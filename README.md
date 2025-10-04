@@ -2,6 +2,8 @@
 
 A custom T9-style keyboard widget for LVGL, supporting character cycling, symbol popovers, and helper buttons (space, backspace, OK, close, mode switching).
 
+![example](capture1.png)
+
 ## Features
 - T9-style input for touchscreens
 - Long-press popover for symbols
