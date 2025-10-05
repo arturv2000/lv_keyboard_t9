@@ -29,7 +29,6 @@ static const char *const t9_btn_chars_upper[T9_BUTTON_COUNT] = {
 static const char *const t9_btn_chars_numbers[T9_BUTTON_COUNT] = {
     "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
 
-
 static t9_mode_t t9_mode = T9_MODE_LOWER;
 
 static uint8_t t9_btn_cycle_idx[T9_BUTTON_COUNT] = {0};
@@ -130,20 +129,21 @@ static void t9_show_symbol_popover(const char *symbols, int symbol_count, lv_obj
 {
     int row_count = (symbol_count + col_count - 1) / col_count;
     int popover_w = (lv_obj_get_width(keyboard) * 8) / 10;
-    int btn_size = popover_w / col_count - 10;
-    int popover_h = row_count * btn_size + 40;
+    int btn_size_w = popover_w / col_count - 10;
+    int btn_size_h = (btn_size_w * 3) / 4; // 4:3 aspect ratio using integer math
+    int popover_h = row_count * btn_size_h + 40;
     lv_obj_t *popover = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(popover, popover_w, popover_h);
-    lv_obj_add_flag(popover, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_remove_flag(popover, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(popover, popover_w, /*popover_h*/LV_SIZE_CONTENT);
     lv_obj_center(popover);
     lv_obj_set_style_bg_color(popover, lv_palette_main(LV_PALETTE_GREY), 0);
     lv_obj_set_style_radius(popover, 8, 0);
-    lv_obj_set_style_pad_all(popover, 0, 0);
-    lv_obj_set_style_pad_column(popover, 8, 0);
-    lv_obj_set_style_pad_row(popover, 8, 0);
+    lv_obj_set_style_pad_all(popover, 2, 0);
+    lv_obj_set_style_pad_column(popover, 4, 0);
+    lv_obj_set_style_pad_row(popover, 4, 0);
     // Add close button (top right)
     lv_obj_t *close_btn = lv_btn_create(popover);
-    lv_obj_set_size(close_btn, btn_size * 0.8, btn_size * 0.8);
+    lv_obj_set_size(close_btn, (int)(btn_size_w * 8 / 10), (int)(btn_size_h * 8 / 10));
     lv_obj_set_grid_cell(close_btn, LV_GRID_ALIGN_END, col_count - 1, 1, LV_GRID_ALIGN_START, 0, 1);
     lv_obj_set_style_radius(close_btn, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_bg_color(close_btn, lv_palette_main(LV_PALETTE_RED), 0);
@@ -170,8 +170,8 @@ static void t9_show_symbol_popover(const char *symbols, int symbol_count, lv_obj
         char sym[2] = {symbols[i], 0};
         lv_obj_t *sym_btn = lv_btn_create(popover);
         lv_obj_set_style_pad_all(sym_btn, 0, 0);
-        lv_obj_set_grid_cell(sym_btn, LV_GRID_ALIGN_STRETCH, i % col_count, 1, LV_GRID_ALIGN_STRETCH, 1 + i / col_count, 1);
-        lv_obj_set_size(sym_btn, btn_size, btn_size);
+        lv_obj_set_grid_cell(sym_btn, LV_GRID_ALIGN_SPACE_EVENLY, i % col_count, 1, LV_GRID_ALIGN_SPACE_EVENLY, 1 + i / col_count, 1);
+        lv_obj_set_size(sym_btn, btn_size_w, btn_size_h);
         lv_obj_t *lbl = lv_label_create(sym_btn);
         lv_obj_center(lbl);
         lv_label_set_text(lbl, sym);
@@ -278,7 +278,7 @@ static void t9_btn_event_cb(lv_event_t *e)
         // T9 button: cycle through chars with timeout
         uint32_t now = lv_tick_get();
         bool reset_cycle = false;
-    if (char_idx != last_char_idx || now - t9_btn_last_press_time[char_idx] > t9_cycle_timeout_ms)
+        if (char_idx != last_char_idx || now - t9_btn_last_press_time[char_idx] > t9_cycle_timeout_ms)
         {
             t9_btn_cycle_idx[char_idx] = 0;
             reset_cycle = true;
@@ -286,13 +286,20 @@ static void t9_btn_event_cb(lv_event_t *e)
         t9_btn_last_press_time[char_idx] = now;
         // In number mode, '1' and '0' only input their number
         const char *chars;
-        if (t9_mode == T9_MODE_NUMBERS) {
+        if (t9_mode == T9_MODE_NUMBERS)
+        {
             chars = t9_btn_chars_numbers[char_idx];
-        } else if (char_idx == 0) {
+        }
+        else if (char_idx == 0)
+        {
             chars = t9_btn_symbols_1;
-        } else if (char_idx == 9) {
+        }
+        else if (char_idx == 9)
+        {
             chars = t9_btn_symbols_0;
-        } else {
+        }
+        else
+        {
             chars = (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[char_idx] : t9_btn_chars_lower[char_idx];
         }
         uint8_t *cycle = &t9_btn_cycle_idx[char_idx];
@@ -389,7 +396,8 @@ static void t9_btn_event_cb(lv_event_t *e)
  */
 lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
 {
-    if(ta == NULL) {
+    if (ta == NULL)
+    {
         LV_LOG_WARN("lv_keyboard_t9_init: ta is NULL");
         return NULL;
     }
@@ -421,17 +429,24 @@ lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
             char buf[32];
             if (char_idx >= 0)
             {
-                if (t9_mode == T9_MODE_NUMBERS) {
+                if (t9_mode == T9_MODE_NUMBERS)
+                {
                     lv_label_set_text(label, t9_btn_chars_numbers[char_idx]);
-                } else if (char_idx == 0) {
+                }
+                else if (char_idx == 0)
+                {
                     char buf[8];
                     lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_1[0], t9_btn_symbols_1[1], t9_btn_symbols_1[2]);
                     lv_label_set_text(label, buf);
-                } else if (char_idx == 9) {
+                }
+                else if (char_idx == 9)
+                {
                     char buf[8];
                     lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_0[0], t9_btn_symbols_0[1], t9_btn_symbols_0[2]);
                     lv_label_set_text(label, buf);
-                } else {
+                }
+                else
+                {
                     const char *chars = (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[char_idx] : t9_btn_chars_lower[char_idx];
                     lv_label_set_text(label, chars);
                 }
@@ -542,26 +557,33 @@ void lv_keyboard_t9_set_mode(lv_obj_t *keyboard, t9_mode_t mode)
             int idx = get_btn_char_idx(r, c);
             if (idx >= 0)
             {
-                if (t9_mode == T9_MODE_NUMBERS) {
+                if (t9_mode == T9_MODE_NUMBERS)
+                {
                     t9_update_btn_label(t9_btns[r][c], t9_btn_chars_numbers[idx]);
-                } else if (idx == 0) {
+                }
+                else if (idx == 0)
+                {
                     char buf[8];
                     lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_1[0], t9_btn_symbols_1[1], t9_btn_symbols_1[2]);
                     t9_update_btn_label(t9_btns[r][c], buf);
-                } else if (idx == 9) {
+                }
+                else if (idx == 9)
+                {
                     char buf[8];
                     lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_0[0], t9_btn_symbols_0[1], t9_btn_symbols_0[2]);
                     t9_update_btn_label(t9_btns[r][c], buf);
-                } else {
+                }
+                else
+                {
                     const char *chars = (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[idx] : t9_btn_chars_lower[idx];
                     t9_update_btn_label(t9_btns[r][c], chars);
                 }
             }
         }
-    t9_update_btn_label(t9_btns[3][0], (t9_mode == T9_MODE_LOWER) ? "abc" : (t9_mode == T9_MODE_UPPER) ? "ABC" : "abc");
+    t9_update_btn_label(t9_btns[3][0], (t9_mode == T9_MODE_LOWER) ? "abc" : (t9_mode == T9_MODE_UPPER) ? "ABC"
+                                                                                                       : "abc");
     t9_update_btn_label(t9_btns[3][3], (t9_mode == T9_MODE_NUMBERS) ? "123" : "T9");
 }
-
 
 /**
  * Get the current input mode of the T9 keyboard.
