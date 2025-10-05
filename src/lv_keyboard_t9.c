@@ -6,7 +6,7 @@
  * symbol popovers on long-press, and helper buttons for space, backspace, OK, close, and mode switching.
  * Usage: Call lv_keyboard_t9_init(parent, ta) to create and link the keyboard to a textarea.
  */
-#include "lvgl/lvgl.h"
+#include "lvgl.h"
 #include "lv_keyboard_t9.h"
 
 #define T9_KEYBOARD_COLS 4
