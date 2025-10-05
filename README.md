@@ -2,6 +2,8 @@
 
 A custom T9-style keyboard widget for LVGL, supporting character cycling, symbol popovers, and helper buttons (space, backspace, OK, close, mode switching).
 
+Is just similar to T9, no auto-completion.
+
 ![example](capture1.png)
 
 ## Features
@@ -9,6 +11,10 @@ A custom T9-style keyboard widget for LVGL, supporting character cycling, symbol
 - Long-press popover for symbols
 - Helper buttons for space, backspace, OK, close, mode toggle
 - Easy integration with LVGL textareas
+
+This was designed for a screen with 320px width, it seems to work "alright" down to 200px, but lower than that and it will not work that well.
+
+The height of the parent container used was 200px.
 
 ## Usage
 1. Add this repo as a submodule or external component:
