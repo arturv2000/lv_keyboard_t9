@@ -46,6 +46,7 @@ static int get_btn_char_idx(int row, int col);
 static void t9_update_btnmatrix_labels(void);
 static void t9_btnmatrix_event_cb(lv_event_t *e);
 static void t9_btnmatrix_longpress_cb(lv_event_t *e);
+static void t9_btnmatrix_drawtask_cb(lv_event_t *e);
 
 /**
  * Initialize and create a T9 keyboard linked to a given textarea.
@@ -81,6 +82,8 @@ lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
     t9_update_btnmatrix_labels();
     lv_obj_add_event_cb(t9_btnmatrix, t9_btnmatrix_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
     lv_obj_add_event_cb(t9_btnmatrix, t9_btnmatrix_longpress_cb, LV_EVENT_LONG_PRESSED, NULL);
+    lv_obj_add_event_cb(t9_btnmatrix, t9_btnmatrix_drawtask_cb, LV_EVENT_DRAW_TASK_ADDED, NULL);
+    lv_obj_add_flag(t9_btnmatrix, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
 
     return keyboard;
 }
@@ -105,7 +108,6 @@ void lv_keyboard_t9_set_textarea(lv_obj_t *keyboard, lv_obj_t *ta)
     }
     linked_ta = ta;
 }
-
 
 /**
  * @brief Set the T9 keyboard mode (lower, upper, numbers).
@@ -152,6 +154,25 @@ uint32_t lv_keyboard_t9_get_cycle_timeout(void)
 void lv_keyboard_t9_set_event_cb(lv_obj_t *keyboard, lv_keyboard_t9_event_cb_t cb)
 {
     lv_obj_set_user_data(keyboard, (void *)cb);
+}
+
+static void t9_btnmatrix_drawtask_cb(lv_event_t *e)
+{
+    lv_obj_t *obj = lv_event_get_target_obj(e);
+    lv_draw_task_t *draw_task = lv_event_get_draw_task(e);
+    lv_draw_dsc_base_t *base_dsc = (lv_draw_dsc_base_t *)lv_draw_task_get_draw_dsc(draw_task);
+
+    if (base_dsc->part == LV_PART_ITEMS)
+    {
+        if (base_dsc->id1 == 12 || base_dsc->id1 == 14 || base_dsc->id1 == 15)
+        {
+            lv_draw_label_dsc_t *label_draw_dsc = lv_draw_task_get_label_dsc(draw_task);
+            if (label_draw_dsc)
+            {
+                label_draw_dsc->decor |= LV_TEXT_DECOR_UNDERLINE;
+            }
+        }
+    }
 }
 
 // Helper to get callback from parent keyboard object
@@ -391,7 +412,8 @@ static void t9_btnmatrix_longpress_cb(lv_event_t *e)
     int char_idx = get_btn_char_idx(btn_id / T9_KEYBOARD_COLS, btn_id % T9_KEYBOARD_COLS);
 
     // Disable popover in Number mode
-    if (t9_mode == T9_MODE_NUMBERS) {
+    if (t9_mode == T9_MODE_NUMBERS)
+    {
         LV_LOG_INFO("Long-press: popover disabled in Number mode");
         return;
     }
@@ -466,7 +488,7 @@ static void t9_btnmatrix_longpress_cb(lv_event_t *e)
     t9_popover = lv_buttonmatrix_create(keyboard);
     lv_obj_set_size(t9_popover, popover_w, popover_h); // Fill most of parent
     lv_obj_center(t9_popover);
-    //lv_obj_set_style_bg_color(t9_popover, lv_color_hex(0x222222), 0);
+    // lv_obj_set_style_bg_color(t9_popover, lv_color_hex(0x222222), 0);
     lv_obj_set_style_border_color(t9_popover, lv_color_hex(0x8888ff), 0);
     lv_obj_set_style_border_width(t9_popover, 2, 0);
     lv_obj_set_style_pad_all(t9_popover, 6, 0);
