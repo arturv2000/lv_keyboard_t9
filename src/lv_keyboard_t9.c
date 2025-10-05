@@ -6,7 +6,6 @@
  * symbol popovers on long-press, and helper buttons for space, backspace, OK, close, and mode switching.
  * Usage: Call lv_keyboard_t9_init(parent, ta) to create and link the keyboard to a textarea.
  */
-#include <stddef.h>
 #include "lvgl/lvgl.h"
 #include "lv_keyboard_t9.h"
 
@@ -30,17 +29,12 @@ static const char *const t9_btn_chars_upper[T9_BUTTON_COUNT] = {
 static const char *const t9_btn_chars_numbers[T9_BUTTON_COUNT] = {
     "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
 
-typedef enum
-{
-    T9_MODE_LOWER,
-    T9_MODE_UPPER,
-    T9_MODE_NUMBERS
-} t9_mode_t;
+
 static t9_mode_t t9_mode = T9_MODE_LOWER;
 
 static uint8_t t9_btn_cycle_idx[T9_BUTTON_COUNT] = {0};
 static uint32_t t9_btn_last_press_time[T9_BUTTON_COUNT] = {0};
-static const uint32_t T9_CYCLE_TIMEOUT_MS = 1000;
+static uint32_t t9_cycle_timeout_ms = 1000;
 
 static lv_obj_t *t9_btns[T9_KEYBOARD_ROWS][T9_KEYBOARD_COLS];
 static lv_obj_t *linked_ta = NULL;
@@ -284,7 +278,7 @@ static void t9_btn_event_cb(lv_event_t *e)
         // T9 button: cycle through chars with timeout
         uint32_t now = lv_tick_get();
         bool reset_cycle = false;
-        if (char_idx != last_char_idx || now - t9_btn_last_press_time[char_idx] > T9_CYCLE_TIMEOUT_MS)
+    if (char_idx != last_char_idx || now - t9_btn_last_press_time[char_idx] > t9_cycle_timeout_ms)
         {
             t9_btn_cycle_idx[char_idx] = 0;
             reset_cycle = true;
@@ -365,58 +359,13 @@ static void t9_btn_event_cb(lv_event_t *e)
         {
             if (t9_mode == T9_MODE_NUMBERS)
                 return;
-            t9_mode = (t9_mode == T9_MODE_LOWER) ? T9_MODE_UPPER : T9_MODE_LOWER;
-            for (int r = 0; r < T9_KEYBOARD_ROWS; r++)
-                for (int c = 0; c < T9_KEYBOARD_COLS; c++)
-                {
-                    int idx = get_btn_char_idx(r, c);
-                    if (idx >= 0)
-                    {
-                        if (t9_mode == T9_MODE_NUMBERS) {
-                            t9_update_btn_label(t9_btns[r][c], t9_btn_chars_numbers[idx]);
-                        } else if (idx == 0) {
-                            char buf[8];
-                            lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_1[0], t9_btn_symbols_1[1], t9_btn_symbols_1[2]);
-                            t9_update_btn_label(t9_btns[r][c], buf);
-                        } else if (idx == 9) {
-                            char buf[8];
-                            lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_0[0], t9_btn_symbols_0[1], t9_btn_symbols_0[2]);
-                            t9_update_btn_label(t9_btns[r][c], buf);
-                        } else {
-                            const char *chars = (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[idx] : t9_btn_chars_lower[idx];
-                            t9_update_btn_label(t9_btns[r][c], chars);
-                        }
-                    }
-                }
-            t9_update_btn_label(t9_btns[3][0], (t9_mode == T9_MODE_LOWER) ? "abc" : "ABC");
+            t9_mode_t new_mode = (t9_mode == T9_MODE_LOWER) ? T9_MODE_UPPER : T9_MODE_LOWER;
+            lv_keyboard_t9_set_mode(keyboard, new_mode);
         }
         else if (lv_strcmp(label, LV_SYMBOL_NEW_LINE) == 0)
         {
-            t9_mode = (t9_mode == T9_MODE_NUMBERS) ? T9_MODE_LOWER : T9_MODE_NUMBERS;
-            for (int r = 0; r < T9_KEYBOARD_ROWS; r++)
-                for (int c = 0; c < T9_KEYBOARD_COLS; c++)
-                {
-                    int idx = get_btn_char_idx(r, c);
-                    if (idx >= 0)
-                    {
-                        if (t9_mode == T9_MODE_NUMBERS) {
-                            t9_update_btn_label(t9_btns[r][c], t9_btn_chars_numbers[idx]);
-                        } else if (idx == 0) {
-                            char buf[8];
-                            lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_1[0], t9_btn_symbols_1[1], t9_btn_symbols_1[2]);
-                            t9_update_btn_label(t9_btns[r][c], buf);
-                        } else if (idx == 9) {
-                            char buf[8];
-                            lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_0[0], t9_btn_symbols_0[1], t9_btn_symbols_0[2]);
-                            t9_update_btn_label(t9_btns[r][c], buf);
-                        } else {
-                            const char *chars = (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[idx] : t9_btn_chars_lower[idx];
-                            t9_update_btn_label(t9_btns[r][c], chars);
-                        }
-                    }
-                }
-            t9_update_btn_label(t9_btns[3][3], (t9_mode == T9_MODE_NUMBERS) ? "123" : "T9");
-            t9_update_btn_label(t9_btns[3][0], (t9_mode == T9_MODE_UPPER) ? "ABC" : "abc");
+            t9_mode_t new_mode = (t9_mode == T9_MODE_NUMBERS) ? T9_MODE_LOWER : T9_MODE_NUMBERS;
+            lv_keyboard_t9_set_mode(keyboard, new_mode);
         }
         else if (lv_strcmp(label, "space") == 0)
         {
@@ -431,8 +380,20 @@ static void t9_btn_event_cb(lv_event_t *e)
     }
 }
 
+/**
+ * Initialize and create a T9 keyboard.
+ *
+ * @param parent The parent LVGL object to contain the keyboard.
+ * @param ta The textarea object to link the keyboard input to.
+ * @return Pointer to the created keyboard object, or NULL on failure.
+ */
 lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
 {
+    if(ta == NULL) {
+        LV_LOG_WARN("lv_keyboard_t9_init: ta is NULL");
+        return NULL;
+    }
+
     linked_ta = ta;
 
     lv_obj_t *keyboard = lv_obj_create(parent);
@@ -509,7 +470,7 @@ lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
                 }
             }
             lv_obj_center(label);
-            lv_obj_set_user_data(t9_btns[row][col], (void *)((row << 8) | col));
+            lv_obj_set_user_data(t9_btns[row][col], (void *)(uintptr_t)((row << 8) | col));
             lv_obj_add_event_cb(t9_btns[row][col], t9_btn_event_cb, LV_EVENT_CLICKED, NULL);
             int idx = get_btn_char_idx(row, col);
             if (idx >= 0)
@@ -517,4 +478,121 @@ lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
         }
     }
     return keyboard;
+}
+
+/**
+ * Set or change the linked textarea for the T9 keyboard.
+ *
+ * @param keyboard Pointer to the T9 keyboard object.
+ * @param ta Pointer to the textarea object to link.
+ */
+void lv_keyboard_t9_set_textarea(lv_obj_t *keyboard, lv_obj_t *ta)
+{
+    if (keyboard == NULL)
+    {
+        LV_LOG_WARN("lv_keyboard_t9_set_textarea: keyboard is NULL");
+        return;
+    }
+    if (ta == NULL)
+    {
+        LV_LOG_WARN("lv_keyboard_t9_set_textarea: ta is NULL");
+        return;
+    }
+    linked_ta = ta;
+}
+
+/**
+ * Get the currently linked textarea of the T9 keyboard.
+ *
+ * @param keyboard Pointer to the T9 keyboard object.
+ * @return Pointer to the linked textarea object, or NULL if none is linked.
+ */
+lv_obj_t *lv_keyboard_t9_get_textarea(lv_obj_t *keyboard)
+{
+    if (keyboard == NULL)
+    {
+        LV_LOG_WARN("lv_keyboard_t9_get_textarea: keyboard is NULL");
+        return NULL;
+    }
+    return linked_ta;
+}
+
+/**
+ * Set the input mode of the T9 keyboard (lowercase, uppercase, numbers).
+ *
+ * @param keyboard Pointer to the T9 keyboard object.
+ * @param mode The desired input mode (T9_MODE_LOWER, T9_MODE_UPPER, T9_MODE_NUMBERS).
+ */
+void lv_keyboard_t9_set_mode(lv_obj_t *keyboard, t9_mode_t mode)
+{
+    if (keyboard == NULL)
+    {
+        LV_LOG_WARN("lv_keyboard_t9_set_mode: keyboard is NULL");
+        return;
+    }
+    if (mode < T9_MODE_LOWER || mode > T9_MODE_NUMBERS)
+    {
+        LV_LOG_WARN("lv_keyboard_t9_set_mode: invalid mode %d", mode);
+        return;
+    }
+    t9_mode = mode;
+    for (int r = 0; r < T9_KEYBOARD_ROWS; r++)
+        for (int c = 0; c < T9_KEYBOARD_COLS; c++)
+        {
+            int idx = get_btn_char_idx(r, c);
+            if (idx >= 0)
+            {
+                if (t9_mode == T9_MODE_NUMBERS) {
+                    t9_update_btn_label(t9_btns[r][c], t9_btn_chars_numbers[idx]);
+                } else if (idx == 0) {
+                    char buf[8];
+                    lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_1[0], t9_btn_symbols_1[1], t9_btn_symbols_1[2]);
+                    t9_update_btn_label(t9_btns[r][c], buf);
+                } else if (idx == 9) {
+                    char buf[8];
+                    lv_snprintf(buf, sizeof(buf), "%c%c%c...", t9_btn_symbols_0[0], t9_btn_symbols_0[1], t9_btn_symbols_0[2]);
+                    t9_update_btn_label(t9_btns[r][c], buf);
+                } else {
+                    const char *chars = (t9_mode == T9_MODE_UPPER) ? t9_btn_chars_upper[idx] : t9_btn_chars_lower[idx];
+                    t9_update_btn_label(t9_btns[r][c], chars);
+                }
+            }
+        }
+    t9_update_btn_label(t9_btns[3][0], (t9_mode == T9_MODE_LOWER) ? "abc" : (t9_mode == T9_MODE_UPPER) ? "ABC" : "abc");
+    t9_update_btn_label(t9_btns[3][3], (t9_mode == T9_MODE_NUMBERS) ? "123" : "T9");
+}
+
+
+/**
+ * Get the current input mode of the T9 keyboard.
+ *
+ * @param keyboard Pointer to the T9 keyboard object.
+ * @return The current input mode (T9_MODE_LOWER, T9_MODE_UPPER, T9_MODE_NUMBERS).
+ */
+t9_mode_t lv_keyboard_t9_get_mode(lv_obj_t *keyboard)
+{
+    if (keyboard == NULL)
+    {
+        LV_LOG_WARN("lv_keyboard_t9_get_mode: keyboard is NULL");
+        return T9_MODE_LOWER; // Default
+    }
+    return t9_mode;
+}
+
+/**
+ * Set the T9 key cycle timeout in milliseconds.
+ * @param ms Timeout in milliseconds
+ */
+void lv_keyboard_t9_set_cycle_timeout(uint32_t ms)
+{
+    t9_cycle_timeout_ms = ms;
+}
+
+/**
+ * Get the current T9 key cycle timeout in milliseconds.
+ * @return Timeout in milliseconds
+ */
+uint32_t lv_keyboard_t9_get_cycle_timeout(void)
+{
+    return t9_cycle_timeout_ms;
 }
