@@ -64,16 +64,11 @@ lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
     }
 
     linked_ta = ta;
-
-    lv_obj_t *keyboard = lv_obj_create(parent);
-    lv_obj_set_size(keyboard, lv_obj_get_width(parent), lv_obj_get_height(parent));
-    lv_obj_set_style_pad_all(keyboard, 0, 0);
-    lv_obj_set_flag(keyboard, LV_OBJ_FLAG_SCROLLABLE, false);
-    lv_obj_update_layout(keyboard);
+    lv_obj_update_layout(parent);   //Just to make sure the object size is already calculated...
 
     // Create buttonmatrix and add to keyboard
-    t9_btnmatrix = lv_buttonmatrix_create(keyboard);
-    lv_obj_set_size(t9_btnmatrix, lv_obj_get_width(keyboard), lv_obj_get_height(keyboard));
+    t9_btnmatrix = lv_buttonmatrix_create(parent);
+    lv_obj_set_size(t9_btnmatrix, lv_obj_get_width(parent), lv_obj_get_height(parent));
     lv_obj_center(t9_btnmatrix);
     //  Make main keyboard buttons bigger
     lv_obj_set_style_pad_all(t9_btnmatrix, 0, 0);
@@ -85,7 +80,7 @@ lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
     lv_obj_add_event_cb(t9_btnmatrix, t9_btnmatrix_drawtask_cb, LV_EVENT_DRAW_TASK_ADDED, NULL);
     lv_obj_add_flag(t9_btnmatrix, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
 
-    return keyboard;
+    return t9_btnmatrix;
 }
 
 /**
@@ -107,6 +102,12 @@ void lv_keyboard_t9_set_textarea(lv_obj_t *keyboard, lv_obj_t *ta)
         return;
     }
     linked_ta = ta;
+}
+
+lv_obj_t *lv_keyboard_t9_get_textarea(lv_obj_t *keyboard)
+{
+    LV_UNUSED(keyboard); // For now, only one global linked_ta
+    return linked_ta;
 }
 
 /**
