@@ -1,4 +1,7 @@
-if(IDF_VERSION)
+## Detect ESP-IDF build system: prefer checking for the idf_component_register
+## command which is provided by ESP-IDF's CMake integration. This is more
+## reliable than testing an environment variable and works across IDF versions.
+if(COMMAND idf_component_register)
     # ESP-IDF build system
     set(COMPONENT_SRCS "src/lv_keyboard_t9.c")
     set(COMPONENT_ADD_INCLUDEDIRS "include")
