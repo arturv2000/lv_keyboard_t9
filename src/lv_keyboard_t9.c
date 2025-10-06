@@ -33,12 +33,13 @@ static const char *const t9_btn_chars_numbers[T9_BUTTON_COUNT] = {
     "1", "2", "3", "4", "5", "6", "7", "8", "9", "0"};
 
 static t9_mode_t t9_mode = T9_MODE_LOWER;
-
+static int32_t t9_btn_last_pressed = -1;
 static uint8_t t9_btn_cycle_idx[T9_BUTTON_COUNT] = {0};
 static uint32_t t9_btn_last_press_time[T9_BUTTON_COUNT] = {0};
 static uint32_t t9_cycle_timeout_ms = 1000;
 
 static lv_obj_t *t9_btnmatrix = NULL;
+static lv_obj_t *t9_popover = NULL;
 static lv_obj_t *linked_ta = NULL;
 
 // --- Static function prototypes ---
@@ -64,7 +65,7 @@ lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
     }
 
     linked_ta = ta;
-    lv_obj_update_layout(parent);   //Just to make sure the object size is already calculated...
+    lv_obj_update_layout(parent); // Just to make sure the object size is already calculated...
 
     // Create buttonmatrix and add to keyboard
     t9_btnmatrix = lv_buttonmatrix_create(parent);
@@ -79,6 +80,11 @@ lv_obj_t *lv_keyboard_t9_init(lv_obj_t *parent, lv_obj_t *ta)
     lv_obj_add_event_cb(t9_btnmatrix, t9_btnmatrix_longpress_cb, LV_EVENT_LONG_PRESSED, NULL);
     lv_obj_add_event_cb(t9_btnmatrix, t9_btnmatrix_drawtask_cb, LV_EVENT_DRAW_TASK_ADDED, NULL);
     lv_obj_add_flag(t9_btnmatrix, LV_OBJ_FLAG_SEND_DRAW_TASK_EVENTS);
+
+    //Disable Repeat for all buttons
+    lv_buttonmatrix_set_button_ctrl_all(t9_btnmatrix, LV_BUTTONMATRIX_CTRL_WIDTH_1 | LV_BUTTONMATRIX_CTRL_NO_REPEAT);
+    // Enable repeat for Backspace button, the others will be disabled....
+    lv_buttonmatrix_clear_button_ctrl(t9_btnmatrix, 3, LV_BUTTONMATRIX_CTRL_NO_REPEAT); // Last button is newline
 
     return t9_btnmatrix;
 }
@@ -294,8 +300,19 @@ static void t9_btnmatrix_event_cb(lv_event_t *e)
     lv_obj_t *btnmatrix = lv_event_get_target(e);
     uint16_t btn_id = lv_buttonmatrix_get_selected_button(btnmatrix);
     const char *txt = lv_buttonmatrix_get_button_text(btnmatrix, btn_id);
+    // Get event Type
+    lv_event_code_t event_code = lv_event_get_code(e);
+
+    // Print btn_id
+    //LV_LOG_USER("t9_btnmatrix_event_cb: btn_id=%d", btn_id);
+
     if (!txt || !linked_ta)
         return;
+
+    if(t9_popover) {
+        // If popover is open, ignore all button presses
+        return;
+    }
 
     // Helper buttons
     if (lv_strcmp(txt, LV_SYMBOL_BACKSPACE) == 0)
@@ -335,8 +352,15 @@ static void t9_btnmatrix_event_cb(lv_event_t *e)
         return;
     }
 
+    // If repeated event, ignore (to avoid multiple inputs on long-press)
+    if (event_code != LV_EVENT_VALUE_CHANGED)
+        return;
+
     // T9 cycling logic
     int char_idx = get_btn_char_idx(btn_id / T9_KEYBOARD_COLS, btn_id % T9_KEYBOARD_COLS);
+
+    //LV_LOG_USER("t9_btnmatrix_event_cb: char_idx=%d", char_idx);
+
     if (char_idx < 0 || char_idx >= T9_BUTTON_COUNT)
         return;
 
@@ -348,18 +372,32 @@ static void t9_btnmatrix_event_cb(lv_event_t *e)
     else if (t9_mode == T9_MODE_UPPER)
     {
         chars = t9_btn_chars_upper[char_idx];
+        if(char_idx == 0) chars = t9_btn_symbols_1; // 1 button
+        if(char_idx == 9) chars = t9_btn_symbols_0; // 0 button
     }
     else
     {
         chars = t9_btn_chars_lower[char_idx];
+        if(char_idx == 0) chars = t9_btn_symbols_1; // 1 button
+        if(char_idx == 9) chars = t9_btn_symbols_0; // 0 button
     }
     if (!chars)
         return;
 
+    // If in Number mode, no cycling, just add the char
+    if (t9_mode == T9_MODE_NUMBERS)
+    {
+        char out[2] = {chars[0], '\0'};
+        lv_textarea_add_text(linked_ta, out);
+        return;
+    }
+    // Cycling logic
     uint32_t now = lv_tick_get();
-    if (now - t9_btn_last_press_time[char_idx] > t9_cycle_timeout_ms)
+    // if key is different from "previous key" or timeout expired, reset cycle index
+    if (btn_id != t9_btn_last_pressed || now - t9_btn_last_press_time[char_idx] > t9_cycle_timeout_ms)
     {
         t9_btn_cycle_idx[char_idx] = 0;
+        t9_btn_cycle_idx[t9_btn_last_pressed] = 0; // Restart Cycle Index for previous key
     }
     else
     {
@@ -369,13 +407,14 @@ static void t9_btnmatrix_event_cb(lv_event_t *e)
         // Remove last char if cycling
         lv_textarea_delete_char(linked_ta);
     }
+    t9_btn_last_pressed = btn_id;
     char out[2] = {chars[t9_btn_cycle_idx[char_idx]], '\0'};
     lv_textarea_add_text(linked_ta, out);
     t9_btn_last_press_time[char_idx] = now;
 }
 
 // --- Popover logic ---
-static lv_obj_t *t9_popover = NULL;
+
 // Use max symbol count for buffer size
 #define T9_POPOVER_MAX_SYMBOLS 40
 static const char *t9_popover_map[T9_POPOVER_MAX_SYMBOLS + 2]; // max symbols + \n + NULL
@@ -411,6 +450,10 @@ static void t9_btnmatrix_longpress_cb(lv_event_t *e)
     uint16_t btn_id = lv_buttonmatrix_get_selected_button(btnmatrix);
 
     int char_idx = get_btn_char_idx(btn_id / T9_KEYBOARD_COLS, btn_id % T9_KEYBOARD_COLS);
+
+    //delete previous character in tarea
+    if (linked_ta)
+        lv_textarea_delete_char(linked_ta);
 
     // Disable popover in Number mode
     if (t9_mode == T9_MODE_NUMBERS)
@@ -497,5 +540,8 @@ static void t9_btnmatrix_longpress_cb(lv_event_t *e)
     lv_obj_set_style_pad_column(t9_popover, 8, 0); // Comfortable column spacing
 
     lv_buttonmatrix_set_map(t9_popover, t9_popover_map);
+    //Disable "repeat" for popover buttons
+    lv_buttonmatrix_set_button_ctrl_all(t9_popover, LV_BUTTONMATRIX_CTRL_NO_REPEAT);
+
     lv_obj_add_event_cb(t9_popover, t9_popover_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
 }
